@@ -1,0 +1,120 @@
+Resources:
+ DynamoDB:
+  Type: AWS::DynamoDB::Table
+  Properties:
+   AttributeDefinitions: 
+   -
+    AttributeName: userId
+    AttributeType: S
+   -
+    AttributeName: noteId
+    AttributeType: S
+   KeySchema: 
+   -
+    AttributeName: userId
+    KeyType: HASH
+   -
+    AttributeName: noteId
+    KeyType: RANGE
+   TableName: notes
+   ProvisionedThroughput:
+    ReadCapacityUnits: 5
+    WriteCapacityUnits: 5
+   SSESpecification: 
+    SSEEnabled: true
+   Tags:
+   - Key: Name
+     Value: NotesDB
+ WriteCapacityScalableTarget:
+  Type: AWS::ApplicationAutoScaling::ScalableTarget
+  Properties:
+   MaxCapacity: 100
+   MinCapacity: 5
+   ResourceId: !Join
+    - /
+    - - table
+      - !Ref DynamoDB
+   RoleARN: !GetAtt DynamoDBScalingRole.Arn
+   ScalableDimension: dynamodb:table:WriteCapacityUnits
+   ServiceNamespace: dynamodb
+   
+ ReadCapacityScalableTarget:
+  Type: AWS::ApplicationAutoScaling::ScalableTarget
+  Properties:
+   MaxCapacity: 100
+   MinCapacity: 5
+   ResourceId: !Join
+    - /
+    - - table
+      - !Ref DynamoDB
+   RoleARN: !GetAtt DynamoDBScalingRole.Arn
+   ScalableDimension: dynamodb:table:ReadCapacityUnits
+   ServiceNamespace: dynamodb
+   
+ WriteScalingPolicy:
+  Type: "AWS::ApplicationAutoScaling::ScalingPolicy"
+  Properties:
+   PolicyName: WriteScalingPolicy
+   PolicyType: TargetTrackingScaling
+   ScalingTargetId: !Ref WriteCapacityScalableTarget
+   TargetTrackingScalingPolicyConfiguration:
+    TargetValue: 50.0
+    ScaleInCooldown: 60
+    ScaleOutCooldown: 60
+    PredefinedMetricSpecification:
+     PredefinedMetricType: DynamoDBWriteCapacityUtilization
+
+ ReadScalingPolicy:
+  Type: "AWS::ApplicationAutoScaling::ScalingPolicy"
+  Properties:
+   PolicyName: ReadScalingPolicy
+   PolicyType: TargetTrackingScaling
+   ScalingTargetId: !Ref ReadCapacityScalableTarget
+   TargetTrackingScalingPolicyConfiguration:
+    TargetValue: 50.0
+    ScaleInCooldown: 60
+    ScaleOutCooldown: 60
+    PredefinedMetricSpecification:
+     PredefinedMetricType: DynamoDBReadCapacityUtilization
+     
+ DynamoDBScalingRole:
+  Type: "AWS::IAM::Role"
+  Properties:
+   AssumeRolePolicyDocument:
+    Version: "2012-10-17"
+    Statement:
+    -
+     Effect: Allow
+     Principal:
+      Service:
+       - "application-autoscaling.amazonaws.com"
+     Action:
+      - "sts:AssumeRole"
+      
+ DynamoDBScalingPolicy:
+  Type: "AWS::IAM::Policy"
+  Properties:
+   PolicyName: "DynamoDBScalingPolicy"
+   PolicyDocument:
+    Version: "2012-10-17"
+    Statement:
+     -
+      Effect: "Allow"
+      Action:
+       - "dynamodb:DescribeTable"
+       - "dynamodb:UpdateTable"
+       - "cloudwatch:PutMetricAlarm"
+       - "cloudwatch:DescribeAlarms"
+       - "cloudwatch:GetMetricStatistics"
+       - "cloudwatch:SetAlarmState"
+       - "cloudwatch:DeleteAlarms"
+      Resource: "*"
+   Roles:
+    - Ref: DynamoDBScalingRole
+          
+Outputs:
+ DynamoDBOutput:
+  Description: Output of VPC ID
+  Value: !Ref DynamoDB
+  Export:
+   Name: !Sub "DynamoDB-Id"

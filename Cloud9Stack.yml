@@ -1,0 +1,18 @@
+Resources:
+ Cloud9IDE:
+  Type: AWS::Cloud9::EnvironmentEC2
+  Properties: 
+   Description: Stack IDE
+   AutomaticStopTimeMinutes: 30
+   Name: Stack IDE
+   InstanceType: t2.micro
+   SubnetId: 
+    Fn::ImportValue: 
+     !Sub "Subnet1-Id"
+
+Outputs:
+ VpcOutput:
+  Description: Output of InstanceId
+  Value: !Ref Cloud9IDE
+  Export:
+   Name: !Sub "Cloud9Instance-Id"

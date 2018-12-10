@@ -1,0 +1,26 @@
+Resources:
+ NotesAppUploads:
+  Type: AWS::S3::Bucket
+  Properties:
+   BucketName: notesapplicationuploads
+   BucketEncryption:
+    ServerSideEncryptionConfiguration:
+     - ServerSideEncryptionByDefault:
+        SSEAlgorithm: AES256
+   CorsConfiguration:
+    CorsRules:
+     - AllowedHeaders: ['*']
+       AllowedOrigins: ['*']
+       AllowedMethods: ['GET', 'PUT', 'POST', 'HEAD', 'DELETE']
+       MaxAge: '3000'
+       Id: CorsRule1
+   Tags:
+   - Key: Name
+     Value: notesapplicationuploads
+     
+Outputs:
+ NotesAppsUpLoadsOutput:
+  Value: !Ref NotesAppUploads
+  Description: Name of Bucket with CORS enabled
+  Export:
+   Name: !Sub "NotesAppUploads-Id"

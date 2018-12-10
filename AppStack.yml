@@ -1,0 +1,81 @@
+Resources:
+ NotesAppCognitoPool:
+  Type: AWS::Cognito::UserPool
+  Properties:
+   UsernameAttributes:
+    - email
+   UserPoolName: notesuserpool
+
+ LambdaFunctionCognitoPolicy:
+  Type: AWS::IAM::Policy
+  Properties:
+   PolicyDocument: 
+    Version: "2012-10-17"
+    Statement: 
+     - 
+      Effect: "Allow"
+      Action: "*"
+      Resource: "*"
+   PolicyName: LambdaCognitoPolicy
+   Roles:
+    - Ref: LambdaFunctionCognitoRole
+    
+ LambdaFunctionCognitoRole:
+  Type: AWS::IAM::Role
+  Properties:
+   RoleName: "LambdaCognitoRole"
+   AssumeRolePolicyDocument:
+    Version: "2012-10-17"
+    Statement:
+     -
+      Effect: "Allow"
+      Principal:
+       Service:
+        - "lambda.amazonaws.com"
+      Action:
+       - "sts:AssumeRole"
+    
+
+ LambdaFunctionCreateAppClients:
+  Type: AWS::Lambda::Function
+  Properties:
+   Code:
+    ZipFile: !Sub |
+     import cfnresponse
+     import boto3
+     import json
+    
+     def lambda_handler(event, context):
+    
+      client = boto3.client('cognito-idp')
+      
+      cognitoPool = client.list_user_pools(
+          MaxResults = 1
+      )
+      userPools = cognitoPool['UserPools']
+    
+      for uPools in userPools:
+          cogId = uPools['Id']
+          name = uPools['Name']
+          create_AppClients = client.create_user_pool_client(
+              UserPoolId = cogId,
+              ClientName = name,
+              GenerateSecret = False,
+              ExplicitAuthFlows = ['ADMIN_NO_SRP_AUTH']
+            )
+   Description: Creates Cognito App Client
+   FunctionName: NoteAppsCognitoAppClientSetup
+   Handler: index.lambda_handler
+   Role: !GetAtt LambdaFunctionCognitoRole.Arn
+   Runtime: python3.6
+   Timeout: 10
+   Tags:
+   - Key: Name
+     Value: CreateAppClients
+   
+Outputs:
+ NotesAppCognitoPoolOutput:
+  Value: !Ref NotesAppCognitoPool
+  Description: Name of Bucket with CORS enabled
+  Export:
+   Name: !Sub "CognitoPool-Id"
